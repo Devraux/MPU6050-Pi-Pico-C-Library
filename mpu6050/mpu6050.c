@@ -2,60 +2,36 @@
 
 struct repeating_timer timer;
 
-MPU6050_REG mpu6050_reg = {
-    .address = 0x68,        //device address
-    .who_i_am_add = 0x75,
-    .reset_add = 0x6B,      //reset address
-    .accel_add = 0x3B,      //accelerator data address register
-    .gyro_add = 0x43,       //gryoscope data address register
-    .temp_add = 0x41,       //temperature data address register
-    .acc_config = 0x1C,     //accelerometer resolution config register and calibration
-    .gyro_config = 0x1B,    // gyroscope resolution config register and calibration
-    .gyro_res = 0x1B,       // gyroscope resolution config register and calibration
-    .XA_TEST = 0x0D,        //XA_TEST and XG_test register
-    .YA_TEST = 0x0E,        //YA_TEST and YG_test register
-    .ZA_TEST = 0x0F,        //ZA_TEST and ZG_test register
-    .A_TEST = 0x10,         //second accelerometer test register XA_TEST[1:0]
-    .config = 0x1A,         //gyroscope DLPF_CFG set register
-    .SMPLRT_DIV = 0x19,     //sample rate divider
-    .FIFO_EN = 0x23,        // fifo enable
-    .FIFO_COUNTER_H = 0x72, // fifo counter high[15 : 8]
-    .FIFO_COUNTER_L = 0x73, // fifo counter high[7 : 0]
-    .INT_ENABLE = 0x38,     //  interrupt register
-    .USER_CTRL = 0x6A       // user control
-};
-
 void i2c_write_reg(uint8_t i2c_address, uint8_t reg, uint8_t data)
 {
     uint8_t tab[] = {reg, data};
-    i2c_write_blocking(i2c1, i2c_address, tab, sizeof(tab)/sizeof(tab[0]), false);
+    i2c_write_blocking(I2C_Instance, i2c_address, tab, sizeof(tab)/sizeof(tab[0]), false);
 }
-
-void who_i_am(uint8_t* mpu_address)
+ 
+uint8_t who_i_am(void)
 {
-    uint8_t who_i_am;
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.who_i_am_add, 2, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, &who_i_am, 2, false); 
-    *mpu_address = who_i_am;
+    uint8_t who_i_am_t;
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_Who_I_am_add, 2, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, &who_i_am_t, 2, false); 
+    
+    // YOU CAN COMMENT THIS LINE //
+    printf("Device address: %x", who_i_am);
 
-    if (who_i_am != 0x68) 
-        printf("Address is not 0x68:, addres is: %d", who_i_am);
-    else 
-        printf("Address is 0x68, adress is : %d", who_i_am);
+    return who_i_am_t;
 }
 
 void mpu_reset(void)
 {
-    i2c_write_reg(mpu6050_reg.address, mpu6050_reg.reset_add, 0x80);
-    sleep_ms(50);
-    i2c_write_reg(mpu6050_reg.address, mpu6050_reg.reset_add, 0x00);
-    sleep_ms(50);
+    i2c_write_reg(MPU6050_Address, MPU6050_Reset_add, 0x80);
+    sleep_ms(50); //Necessary sensor delay
+    i2c_write_reg(MPU6050_Address, MPU6050_Reset_add, 0x00);
+    sleep_ms(50); //Necessary sensor delay
 }
 
 void mpu_init(MPU6050* mpu6050)
 {
     // I2C INIT //
-    i2c_init(i2c1, 400000);
+    i2c_init(I2C_Instance, 400000);
     gpio_set_function(SDA_Pin, GPIO_FUNC_I2C); //27 and 26
     gpio_set_function(SCL_Pin, GPIO_FUNC_I2C);
     gpio_pull_up(SDA_Pin);
@@ -68,7 +44,7 @@ void mpu_init(MPU6050* mpu6050)
     // MPU6050 SENSOR INIT //
     mpu_reset();
     mpu_set_sample_rate(1);
-    mpu_setresolution(0, 0, mpu6050);
+    mpu_set_resolution(0, 0, mpu6050);
     mpu_get_offset(mpu6050);
     //mpu_get_statistic(mpu6050);
 
@@ -82,16 +58,16 @@ void mpu_read_raw(MPU6050* mpu6050)
     int16_t temperature = 0;
 
     //ACCELERATION
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.accel_add, 1, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, buffer, 6, false);
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_Accel_add, 1, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, buffer, 6, false);
 
     mpu6050->mpu6050_data.accel_raw[0] = (buffer[0] << 8) | buffer[1];
     mpu6050->mpu6050_data.accel_raw[1] = (buffer[2] << 8) | buffer[3];
     mpu6050->mpu6050_data.accel_raw[2] = (buffer[4] << 8) | buffer[5];
 
     //GYROSCOPE
-    i2c_write_blocking(i2c1,mpu6050_reg.address, &mpu6050_reg.gyro_add, 1, true);
-    i2c_read_blocking(i2c1, mpu6050_reg.address, buffer, 6, false);  
+    i2c_write_blocking(I2C_Instance,MPU6050_Address, (uint8_t*)MPU6050_Gyro_add, 1, true);
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, buffer, 6, false);  
 
     mpu6050->mpu6050_data.gyro_raw[0] = (buffer[0] << 8) | buffer[1];
     mpu6050->mpu6050_data.gyro_raw[1] = (buffer[2] << 8) | buffer[3];
@@ -99,15 +75,15 @@ void mpu_read_raw(MPU6050* mpu6050)
 
 
     //TEMPERATURE
-    i2c_write_blocking(i2c1,mpu6050_reg.address, &mpu6050_reg.temp_add, 1, true);
-    i2c_read_blocking(i2c1, mpu6050_reg.address, buffer, 2, false);  
+    i2c_write_blocking(I2C_Instance,MPU6050_Address, (uint8_t*)MPU6050_Temp_add, 1, true);
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, buffer, 2, false);  
 
     temperature = buffer[0] << 8 | buffer[1];
     //mpu6050->mpu6050_raw.temp = (temperature / 340.f) + 36.53;
     mpu6050->mpu6050_data.temp_raw = temperature; 
 }
 
-void mpu_setresolution(uint8_t gyro_res, uint8_t acc_res, MPU6050* mpu6050)
+void mpu_set_resolution(uint8_t gyro_res, uint8_t acc_res, MPU6050* mpu6050)
 {
     uint8_t check, resolution = 0;
     uint8_t res_index = 0;
@@ -137,7 +113,7 @@ void mpu_setresolution(uint8_t gyro_res, uint8_t acc_res, MPU6050* mpu6050)
             break;
     }
 
-    i2c_write_reg(mpu6050_reg.address, mpu6050_reg.gyro_res, resolution);
+    i2c_write_reg(MPU6050_Address, MPU6050_gyro_res, resolution);
     mpu6050->mpu6050_state.gyro_res = res_index;
 
 
@@ -169,7 +145,7 @@ void mpu_setresolution(uint8_t gyro_res, uint8_t acc_res, MPU6050* mpu6050)
             break;
     }
     
-    i2c_write_reg(mpu6050_reg.address,mpu6050_reg.acc_config ,resolution);
+    i2c_write_reg(MPU6050_Address, MPU6050_Acc_config ,resolution);
     mpu6050->mpu6050_state.accel_res = res_index;
     mpu6050->mpu6050_state.accel_res_val = res_value;
 }
@@ -185,19 +161,19 @@ bool mpu_accel_st(MPU6050* mpu6050, MPU6050_SELFTEST* mpu6050_accel_st)
     int16_t accel_y = mpu6050->mpu6050_data.accel_raw[1];
     int16_t accel_z = mpu6050->mpu6050_data.accel_raw[2];
 
-    i2c_write_reg(mpu6050_reg.address, mpu6050_reg.acc_config, 0b11110000); // enable selft test | set +-8g
+    i2c_write_reg(MPU6050_Address, MPU6050_Acc_config, 0b11110000); // enable selft test | set +-8g
 
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.XA_TEST, 1, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, &mpu6050_accel_st->X_TEST, 1, false);
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_XA_TEST, 1, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, &mpu6050_accel_st->X_TEST, 1, false);
     
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.YA_TEST, 1, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, &mpu6050_accel_st->Y_TEST, 1, false);
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_YA_TEST, 1, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, &mpu6050_accel_st->Y_TEST, 1, false);
     
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.ZA_TEST, 1, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, &mpu6050_accel_st->Z_TEST, 1, false);
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_ZA_TEST, 1, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, &mpu6050_accel_st->Z_TEST, 1, false);
     
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.A_TEST, 1, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, &mpu6050_accel_st->A_TEST, 1, false);
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_A_TEST, 1, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, &mpu6050_accel_st->A_TEST, 1, false);
     
     mpu6050_accel_st->X_TEST = (mpu6050_accel_st->X_TEST >> 3); mpu6050_accel_st->X_TEST |= ((mpu6050_accel_st->A_TEST >> 4) & mask);
     mpu6050_accel_st->Y_TEST = (mpu6050_accel_st->Y_TEST >> 3); mpu6050_accel_st->Y_TEST |= ((mpu6050_accel_st->A_TEST >> 2) & mask);
@@ -216,7 +192,7 @@ bool mpu_accel_st(MPU6050* mpu6050, MPU6050_SELFTEST* mpu6050_accel_st)
     mpu6050_accel_st->Y_ERROR = (mpu6050_accel_st->STR_Y - mpu6050_accel_st->FT_Y) / mpu6050_accel_st->FT_Y;
     mpu6050_accel_st->Z_ERROR = (mpu6050_accel_st->STR_Z - mpu6050_accel_st->FT_Z) / mpu6050_accel_st->FT_Z;
     
-    mpu_setresolution(gyro_res_mem, accel_res_mem, mpu6050);// After self test come back to old config values and disable self test mode 
+    mpu_set_resolution(gyro_res_mem, accel_res_mem, mpu6050);// After self test come back to old config values and disable self test mode 
     return true;
 }
 
@@ -231,16 +207,16 @@ bool mpu_gyro_st(MPU6050* mpu6050, MPU6050_SELFTEST* mpu6050_gyro_st)
     uint8_t gyro_y = mpu6050->mpu6050_data.gyro_raw[1];
     uint8_t gyro_z = mpu6050->mpu6050_data.gyro_raw[2];
 
-    i2c_write_reg(mpu6050_reg.address, mpu6050_reg.gyro_config, 0b11100000); // enable selft test | set +-250*/s
+    i2c_write_reg(MPU6050_Address, MPU6050_Gyro_config, 0b11100000); // enable selft test | set +-250*/s
 
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.XA_TEST, 1, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, &mpu6050_gyro_st->X_TEST, 1, false);
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_XA_TEST, 1, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, &mpu6050_gyro_st->X_TEST, 1, false);
     
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.YA_TEST, 1, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, &mpu6050_gyro_st->Y_TEST, 1, false);
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_YA_TEST, 1, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, &mpu6050_gyro_st->Y_TEST, 1, false);
     
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.ZA_TEST, 1, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, &mpu6050_gyro_st->Z_TEST, 1, false);
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_ZA_TEST, 1, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, &mpu6050_gyro_st->Z_TEST, 1, false);
     
     mpu6050_gyro_st->X_TEST = (mpu6050_gyro_st->X_TEST & mask);
     mpu6050_gyro_st->Y_TEST = (mpu6050_gyro_st->Y_TEST & mask);
@@ -259,7 +235,7 @@ bool mpu_gyro_st(MPU6050* mpu6050, MPU6050_SELFTEST* mpu6050_gyro_st)
     mpu6050_gyro_st->Y_ERROR = (mpu6050_gyro_st->STR_Y - mpu6050_gyro_st->FT_Y) / mpu6050_gyro_st->FT_Y;
     mpu6050_gyro_st->Z_ERROR = (mpu6050_gyro_st->STR_Z - mpu6050_gyro_st->FT_Z) / mpu6050_gyro_st->FT_Z;
     
-    mpu_setresolution(gyro_res_mem, accel_res_mem, mpu6050);// After self test come back to old config values and disable self test mode 
+    mpu_set_resolution(gyro_res_mem, accel_res_mem, mpu6050);// After self test come back to old config values and disable self test mode 
     return true;
 }
 
@@ -323,40 +299,40 @@ void mpu_convert(MPU6050* mpu6050)
 
 void mpu_set_sample_rate(uint8_t divider)
 {
-    i2c_write_reg(mpu6050_reg.address, mpu6050_reg.config, 0b00000110); // => set DLPF as 1kHz
+    i2c_write_reg(MPU6050_Address, MPU6050_Config, 0b00000110); // => set DLPF as 1kHz
 
     switch(divider)
     {
         case 1:
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.SMPLRT_DIV, 0b00000001);
+            i2c_write_reg(MPU6050_Address, MPU6050_SMPLRT_DIV, 0b00000001);
         break;
 
         case 2:
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.SMPLRT_DIV, 0b00000010);
+            i2c_write_reg(MPU6050_Address, MPU6050_SMPLRT_DIV, 0b00000010);
         break;
 
         case 4:
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.SMPLRT_DIV, 0b00000100);
+            i2c_write_reg(MPU6050_Address, MPU6050_SMPLRT_DIV, 0b00000100);
         break;
 
         case 8:
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.SMPLRT_DIV, 0b00001000);
+            i2c_write_reg(MPU6050_Address, MPU6050_SMPLRT_DIV, 0b00001000);
         break;
 
         case 16:
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.SMPLRT_DIV, 0b00010000);
+            i2c_write_reg(MPU6050_Address, MPU6050_SMPLRT_DIV, 0b00010000);
         break;
         
         case 32:
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.SMPLRT_DIV, 0b00100000);
+            i2c_write_reg(MPU6050_Address, MPU6050_SMPLRT_DIV, 0b00100000);
         break;
 
         case 64:
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.SMPLRT_DIV, 0b01000000);
+            i2c_write_reg(MPU6050_Address, MPU6050_SMPLRT_DIV, 0b01000000);
         break;
 
         case 128:
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.SMPLRT_DIV, 0b10000000);
+            i2c_write_reg(MPU6050_Address, MPU6050_SMPLRT_DIV, 0b10000000);
         break;
     }  
 }
@@ -521,23 +497,23 @@ bool mpu_callback(struct repeating_timer *timer)
 void mpu_fifo_en(bool temp_en, bool acc_en, bool gyro_en)
 {
 
-    i2c_write_reg(mpu6050_reg.address, mpu6050_reg.USER_CTRL, 0b01000000);
+    i2c_write_reg(MPU6050_Address, MPU6050_USER_CTRL, 0b01000000);
     uint8_t current_set = 0;
     uint8_t mask = 0b00000000;
 
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.FIFO_EN, 1, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, &current_set, 1, false); 
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_FIFO_EN, 1, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, &current_set, 1, false); 
 
     switch(temp_en)
     {
         case 0:
             mask = current_set & 0b01111111;
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.FIFO_EN, mask);
+            i2c_write_reg(MPU6050_Address, MPU6050_FIFO_EN, mask);
         break;
 
         case 1:
             mask = current_set | 0b1000000;
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.FIFO_EN, mask);
+            i2c_write_reg(MPU6050_Address, MPU6050_FIFO_EN, mask);
         break;
     } 
 
@@ -545,12 +521,12 @@ void mpu_fifo_en(bool temp_en, bool acc_en, bool gyro_en)
     {
         case 0:
             mask = current_set & 0b11110111;
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.FIFO_EN, mask);
+            i2c_write_reg(MPU6050_Address, MPU6050_FIFO_EN, mask);
         break;
 
         case 1:
             mask = current_set | 0b00001000;
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.FIFO_EN, mask);
+            i2c_write_reg(MPU6050_Address, MPU6050_FIFO_EN, mask);
         break;
     } 
 
@@ -558,12 +534,12 @@ void mpu_fifo_en(bool temp_en, bool acc_en, bool gyro_en)
     {
         case 0:
             mask = current_set & 0b10001111;
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.FIFO_EN, mask);
+            i2c_write_reg(MPU6050_Address, MPU6050_FIFO_EN, mask);
         break;
 
         case 1:
             mask = current_set | 0b01110000;
-            i2c_write_reg(mpu6050_reg.address, mpu6050_reg.FIFO_EN, mask);
+            i2c_write_reg(MPU6050_Address, MPU6050_FIFO_EN, mask);
         break;
     } 
 
@@ -572,24 +548,10 @@ void mpu_fifo_en(bool temp_en, bool acc_en, bool gyro_en)
     uint8_t int_current_set = 0;
     uint8_t int_mask = 0b00010000;  
 
-    i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.INT_ENABLE, 1, true); 
-    i2c_read_blocking(i2c1, mpu6050_reg.address, &int_current_set, 1, false); 
+    i2c_write_blocking(I2C_Instance, MPU6050_Address, (uint8_t*)MPU6050_INT_ENABLE, 1, true); 
+    i2c_read_blocking(I2C_Instance, MPU6050_Address, &int_current_set, 1, false); 
 
-    i2c_write_reg(mpu6050_reg.address, mpu6050_reg.INT_ENABLE, int_mask | int_current_set);
-}
-
-void mpu_fifo_get_data(int8_t* data)
-{
-    uint16_t buffer_size = 1024;
-    int8_t buffer[1024];
-
-    for(uint16_t i = 0; i < buffer_size; i++)
-    {
-        i2c_write_blocking(i2c1, mpu6050_reg.address, &mpu6050_reg.FIFO_EN, 1, true); 
-        i2c_read_blocking(i2c1, mpu6050_reg.address, buffer, 1, false); 
-    }    
-
-    memcpy(data, buffer, buffer_size);
+    i2c_write_reg(MPU6050_Address, MPU6050_INT_ENABLE, int_mask | int_current_set);
 }
 
 int16_t get_variance(int16_t* data, uint8_t data_size)
