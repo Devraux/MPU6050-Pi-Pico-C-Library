@@ -13,7 +13,10 @@
         "irq.h": "c"
     },
     "cSpell.words": [
+        "accelbuffer",
         "DLPF",
+        "gyrobuffer",
+        "gyrometer",
         "ringbuffer",
         "SMPLRT"
     ]

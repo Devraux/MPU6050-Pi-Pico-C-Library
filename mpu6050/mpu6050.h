@@ -40,20 +40,23 @@
 #define MPU6050_INT_ENABLE       0x38 // interrupt register
 #define MPU6050_USER_CTRL        0x6A // user control
 
-typedef struct MPU6050_STATE
+// MPU6050_STATE -> MPU6050_Config 
+
+
+typedef struct MPU6050_State
 {
-    uint8_t accel_res; uint16_t accel_res_val;                      // 0=> 16384, 1=>8192, 2=>4096, 3=>2048  
-    uint8_t gyro_res;                                               // 0=> 131,   1=>65.5, 2=>32.8, 3=>16.4 
+    uint8_t accel_res; uint16_t accel_res_val;                          // 0=> 16384, 1=>8192, 2=>4096, 3=>2048  
+    uint8_t gyro_res;                                                   // 0=> 131,   1=>65.5, 2=>32.8, 3=>16.4 
 
-    int16_t accel_x_deviation, accel_y_deviation, accel_z_deviation;// accelerometer standard deviation
-    int16_t gyro_x_deviation, gyro_y_deviation, gyro_z_deviation;   // gyroscope standard deviation
+    int16_t accel_x_deviation, accel_y_deviation, accel_z_deviation;    // accelerometer standard deviation
+    int16_t gyro_x_deviation,  gyro_y_deviation,  gyro_z_deviation;     // gyroscope standard deviation
 
-    int16_t accel_x_offset, accel_y_offset, accel_z_offset;         // accelerometer offset
-    int16_t gyro_x_offset, gyro_y_offset, gyro_z_offset;            // gyroscope offset
+    int16_t accel_x_offset, accel_y_offset, accel_z_offset;             // accelerometer offset
+    int16_t gyro_x_offset,  gyro_y_offset,  gyro_z_offset;              // gyroscope offset
         
-}MPU6050_STATE;
+}MPU6050_State;
 
-typedef struct MPU6050_DATA
+typedef struct MPU6050_Data
 {
     int16_t accel_raw[3];               // RAW X - Y - Z Acceleration
     int16_t gyro_raw[3];                // RAW X - Y - Z Gyroscope Data
@@ -75,21 +78,18 @@ typedef struct MPU6050_DATA
 
     float distance;                     // computed distance
     float theta_roll, theta_pitch, theta_yaw;      // theta nagle
-}MPU6050_DATA;
-
-typedef struct MPU6050
-{
-    struct MPU6050_STATE mpu6050_state;
-    struct MPU6050_DATA mpu6050_data;
-}MPU6050;
+}MPU6050_Data;
 
 typedef struct MPU6050_SELFTEST
 {
-    uint8_t STR_X, STR_Y, STR_Z;            //STR => SELFT-TEST-RESPONSE
-    float FT_X, FT_Y, FT_Z;                 //FT => FACTORY TRIMMER
-    uint8_t X_TEST, Y_TEST, Z_TEST, A_TEST; // TEST REGISTER
-    float X_ERROR, Y_ERROR, Z_ERROR;        //Errors given in %
+    uint8_t STR_X,   STR_Y,   STR_Z;            //STR => SELF-TEST-RESPONSE
+    float   FT_X,    FT_Y,    FT_Z;             //FT => FACTORY TRIMMER
+    uint8_t X_TEST,  Y_TEST,  Z_TEST, A_TEST;   // TEST REGISTER
+    float   X_ERROR, Y_ERROR, Z_ERROR;          //Errors given in %
 }MPU6050_SELFTEST;
+
+
+
 
 /// i2c_write_reg 
 /// @param i2c_address  => device address
@@ -99,7 +99,7 @@ void i2c_write_reg(uint8_t i2c_address, uint8_t reg, uint8_t data);
 
 /// mpu I2C init
 /// @param MPU6050 =>MPU6050 data structure 
-void mpu_init(MPU6050* mpu6050); 
+void mpu_init(MPU6050_Data* MPU6050_Data_t); 
 
 /// who_i_am
 ///@brief save MPU6050 I2C address in mpu_address param
@@ -110,31 +110,31 @@ void mpu_reset(void);
 
 /// mpu_set resolution
 /// @param gyro_res => gyrometer resolution <=> ±250 ±500g ±1000g ±2000g  <=user enter=> 0, 1, 2, 3
-/// @param acc_res  => acceleroeter resolution <=> ±2g, ±4g, ±8g, or ±16g  <=user enter=> 0, 1, 2, 3 
+/// @param acc_res  => accelerometer resolution <=> ±2g, ±4g, ±8g, or ±16g  <=user enter=> 0, 1, 2, 3 
 /// @param MPU6050  => MPU6050 data structure 
-void mpu_set_resolution(uint8_t gyro_res, uint8_t acc_res, MPU6050* mpu6050); 
+void mpu_set_resolution(uint8_t gyro_res, uint8_t acc_res); 
 
 /// mpu_read
 /// @brief data from sensor
 /// @param MPU6050 => MPU6050 data structure 
-void mpu_read_raw(MPU6050* mpu6050); // read data from mpu6050
+void mpu_read_raw(MPU6050_Data* MPU6050_Data_t); // read data from mpu6050
 
 /// mpu_accel_st
 /// @brief mpu6050 accelerometer sensor self test, return true if selftest goes properly and false otherwise//
 /// @param MPU6050          => MPU6050 data structure 
 /// @param mpu6050_accel_st => mpu6050 accel self test data structure
-bool mpu_accel_st(MPU6050* mpu6050, MPU6050_SELFTEST* mpu6050_accel_st); 
+bool mpu_accel_st(MPU6050_Data* MPU6050_Data_t, MPU6050_SELFTEST* mpu6050_accel_st); 
 
 /// mpu_gyro_st 
 /// @brief mpu6050 gyrometer sensor self test, return true if selftest goes properly and false otherwise//
 /// @param MPU6050          => MPU6050 data structure 
 /// @param mpu6050_gyro_st  => mpu6050 gyro self test data structure
-bool mpu_gyro_st(MPU6050* mpu6050, MPU6050_SELFTEST* mpu6050_gyro_st); 
+bool mpu_gyro_st(MPU6050_Data* MPU6050_Data_t, MPU6050_SELFTEST* mpu6050_gyro_st); 
 
 /// mpu_convert
 /// @brief convert data measured as ADC value into acceleration in [m/s2] and gyroscope [*]
 /// @param MPU6050 => MPU6050 data structure 
-void mpu_convert(MPU6050* mpu6050);
+void mpu_convert(MPU6050_Data* MPU6050_Data_t);
 
 /// mpu_set_sample_rate
 /// @brief set sample rate of gyroscope and accelerometer
@@ -146,7 +146,7 @@ void mpu_set_sample_rate(uint8_t divider);
 /// @param MPU6050 => MPU6050 data structure 
 /// @return print statistics data like variance and standard deviation(sqrt(variance))
 /// @details => while mpu_statistic is enabled don't move sensor 
-void mpu_get_statistic(MPU6050* mpu6050);
+void mpu_get_statistic(MPU6050_Data* MPU6050_Data_t);
 
 /// get_variance
 /// @brief get mpu6050 variance information
@@ -156,20 +156,20 @@ int16_t get_variance(int16_t* data, uint8_t data_size);
 
 /// remove offset
 /// @param MPU6050 => MPU6050 data structure 
-void mpu_get_offset(MPU6050* mpu6050); 
+void mpu_get_offset(MPU6050_Data* MPU6050_Data_t); 
 
 // mpu_read
 /// @param MPU6050 => mpu6050 output data
-void mpu_read(MPU6050* mpu6050);
+void mpu_read(MPU6050_Data* MPU6050_Data_t);
 
 /// mpu_remove_gravity
 /// @brief remove gravity from sensor output and save data in mpu6050 structure 
 /// @param MPU6050 => mpu6050 output data
-void mpu_remove_gravity(MPU6050* mpu6050);
+void mpu_remove_gravity(MPU6050_Data* MPU6050_Data_t);
 
 /// mpu_get_distance 
 /// @param MPU6050 => mpu6050 output data
-void mpu_get_distance(MPU6050* mpu6050);
+void mpu_get_distance(MPU6050_Data* MPU6050_Data_t);
 
 /// mpu_CALLBACK
 /// @brief build in pi pico sdk callback 
@@ -179,6 +179,6 @@ bool mpu_callback(struct repeating_timer* timer);
 /// mpu_get_theta 
 /// @brief compute pitch and roll from accelerometer and gyroscope 
 /// @param MPU6050 => mpu6050 output data
-void mpu_get_theta(MPU6050* mu6050);
+void mpu_get_theta(MPU6050_Data* MPU6050_Data_t);
 
 #endif
