@@ -1,4 +1,7 @@
 # MPU6050_MotionAnlyzer
+
+![Visitors](https://visitor-badge.laobi.icu/badge?page_id=Devraux.MPU6050-Pi-Pico-C-Library)
+
 This application is a simple IMU (Inertial Measurement Unit) based on MPU6050 and Raspberry Pi Pico, which allows you to:
 * Measure raw linear acceleration
 * Measure raw angular velocity
