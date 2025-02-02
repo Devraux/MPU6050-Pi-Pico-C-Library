@@ -555,7 +555,7 @@ void mpu_fifo_en(bool temp_en, bool acc_en, bool gyro_en)
     i2c_write_reg(MPU6050_Address, MPU6050_INT_ENABLE, int_mask | int_current_set);
 }
 
-int16_t get_variance(int16_t* data, uint8_t data_size)
+int32_t get_variance(int16_t* data, uint8_t data_size)
 {
     int16_t variance = 0;
     int32_t sum = 0;
